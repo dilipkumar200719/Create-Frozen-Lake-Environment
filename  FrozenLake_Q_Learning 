@@ -1,0 +1,717 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 0,
+  "metadata": {
+    "colab": {
+      "provenance": [],
+      "authorship_tag": "ABX9TyO7cCaQuGeAF7DHk5kK2fcm",
+      "include_colab_link": true
+    },
+    "kernelspec": {
+      "name": "python3",
+      "display_name": "Python 3"
+    },
+    "language_info": {
+      "name": "python"
+    }
+  },
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "view-in-github",
+        "colab_type": "text"
+      },
+      "source": [
+        "<a href=\"https://colab.research.google.com/github/dilipkumar200719/Create-Frozen-Lake-Environment/blob/main/%20FrozenLake_Q_Learning%20\" target=\"_parent\"><img src=\"https://colab.research.google.com/assets/colab-badge.svg\" alt=\"Open In Colab\"/></a>"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "\n",
+        "Introduction\n",
+        "Reinforcement Learning (RL) is a branch of Machine Learning where an agent learns by interacting with an environment.\n",
+        "\n",
+        "The agent performs actions and receives rewards or penalties.\n",
+        "\n",
+        "Unlike supervised learning, Reinforcement Learning does not require labeled data.\n",
+        "\n",
+        "In this project, the FrozenLake environment is used where:\n",
+        "\n",
+        "S = Start\n",
+        "F = Frozen Surface (Safe)\n",
+        "H = Hole (Danger)\n",
+        "G = Goal\n",
+        "The objective is to reach the Goal while avoiding the Holes"
+      ],
+      "metadata": {
+        "id": "ighuFZ3R3S_y"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "!pip install gymnasium -q"
+      ],
+      "metadata": {
+        "id": "f9b7fZO53UHA"
+      },
+      "execution_count": 2,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "import gymnasium as gym\n",
+        "import numpy as np\n",
+        "import matplotlib.pyplot as plt\n",
+        "import pandas as pd\n",
+        "\n",
+        "print(\"Libraries Imported Successfully\")"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "FNapP52l3Wuq",
+        "outputId": "49e95614-70b1-405b-aeb9-b6a466572ed3"
+      },
+      "execution_count": 3,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Libraries Imported Successfully\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "env = gym.make(\"FrozenLake-v1\")\n",
+        "\n",
+        "state, info = env.reset()\n",
+        "\n",
+        "print(\"Starting State :\", state)\n",
+        "print(\"Total States :\", env.observation_space.n)\n",
+        "print(\"Total Actions :\", env.action_space.n)"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "MDrO9l523alX",
+        "outputId": "6b905d3f-cf43-44bf-b347-6c8060137583"
+      },
+      "execution_count": 4,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Starting State : 0\n",
+            "Total States : 16\n",
+            "Total Actions : 4\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "#Step 2: Understand the Action Space\n",
+        "Actions:\n",
+        "\n",
+        "0 → Left\n",
+        "1 → Down\n",
+        "2 → Right\n",
+        "3 → Up"
+      ],
+      "metadata": {
+        "id": "ZIATNPxP3fcO"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "state, info = env.reset()\n",
+        "\n",
+        "print(\"Current State :\", state)\n",
+        "\n",
+        "action = 2      # Move Right\n",
+        "\n",
+        "new_state, reward, terminated, truncated, info = env.step(action)\n",
+        "\n",
+        "print(\"New State :\", new_state)\n",
+        "print(\"Reward :\", reward)\n",
+        "print(\"Episode Finished :\", terminated or truncated)"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "N4p5jrZy3c96",
+        "outputId": "a7604387-0128-4d0c-c4c9-4a7bb37e155d"
+      },
+      "execution_count": 5,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Current State : 0\n",
+            "New State : 4\n",
+            "Reward : 0\n",
+            "Episode Finished : False\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "\n",
+        "#Step 3: Initialize the Q-Table\n",
+        "A Q-table stores the expected future reward for every state-action pair.\n",
+        "\n",
+        "Initially, all values are set to zero because the agent has no prior knowledge"
+      ],
+      "metadata": {
+        "id": "hn-b-vx_3nNd"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "q_table = np.zeros((env.observation_space.n,\n",
+        "                    env.action_space.n))\n",
+        "\n",
+        "print(q_table)"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "KzcMqr4Q3kix",
+        "outputId": "7940b047-7b92-4e95-b5ca-4ddbdb6088eb"
+      },
+      "execution_count": 6,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "[[0. 0. 0. 0.]\n",
+            " [0. 0. 0. 0.]\n",
+            " [0. 0. 0. 0.]\n",
+            " [0. 0. 0. 0.]\n",
+            " [0. 0. 0. 0.]\n",
+            " [0. 0. 0. 0.]\n",
+            " [0. 0. 0. 0.]\n",
+            " [0. 0. 0. 0.]\n",
+            " [0. 0. 0. 0.]\n",
+            " [0. 0. 0. 0.]\n",
+            " [0. 0. 0. 0.]\n",
+            " [0. 0. 0. 0.]\n",
+            " [0. 0. 0. 0.]\n",
+            " [0. 0. 0. 0.]\n",
+            " [0. 0. 0. 0.]\n",
+            " [0. 0. 0. 0.]]\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "#Step 4: Define Hyperparameters\n",
+        "The following parameters control the learning process.\n",
+        "\n",
+        "Learning Rate (α)\n",
+        "Discount Factor (γ)\n",
+        "Exploration Rate (ε)\n",
+        "Number of Episodes\n",
+        "Maximum Steps"
+      ],
+      "metadata": {
+        "id": "YwH9hio93sko"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "learning_rate = 0.8\n",
+        "\n",
+        "discount_factor = 0.95\n",
+        "\n",
+        "epsilon = 1.0\n",
+        "\n",
+        "epsilon_decay = 0.995\n",
+        "\n",
+        "min_epsilon = 0.01\n",
+        "\n",
+        "episodes = 10000\n",
+        "\n",
+        "max_steps = 100\n",
+        "\n",
+        "rewards = []"
+      ],
+      "metadata": {
+        "id": "J6F5gWNx3qHn"
+      },
+      "execution_count": 7,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "#Step 5: Train the Agent using Q-Learning\n",
+        "During training:\n",
+        "\n",
+        "The agent explores the environment.\n",
+        "Updates the Q-table.\n",
+        "Learns the best action for each state.\n",
+        "Reduces exploration over time."
+      ],
+      "metadata": {
+        "id": "7r8FkW8y3xxj"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "for episode in range(episodes):\n",
+        "\n",
+        "    state, info = env.reset()\n",
+        "\n",
+        "    done = False\n",
+        "\n",
+        "    total_reward = 0\n",
+        "\n",
+        "    for step in range(max_steps):\n",
+        "\n",
+        "        # Epsilon-Greedy Strategy\n",
+        "        if np.random.uniform(0, 1) < epsilon:\n",
+        "            action = env.action_space.sample()\n",
+        "        else:\n",
+        "            action = np.argmax(q_table[state])\n",
+        "\n",
+        "        new_state, reward, terminated, truncated, info = env.step(action)\n",
+        "\n",
+        "        done = terminated or truncated\n",
+        "\n",
+        "        # Q-Learning Update Rule\n",
+        "        q_table[state, action] = q_table[state, action] + learning_rate * (\n",
+        "            reward +\n",
+        "            discount_factor * np.max(q_table[new_state]) -\n",
+        "            q_table[state, action]\n",
+        "        )\n",
+        "\n",
+        "        state = new_state\n",
+        "\n",
+        "        total_reward += reward\n",
+        "\n",
+        "        if done:\n",
+        "            break\n",
+        "\n",
+        "    epsilon = max(min_epsilon,\n",
+        "                  epsilon * epsilon_decay)\n",
+        "\n",
+        "    rewards.append(total_reward)"
+      ],
+      "metadata": {
+        "id": "X9zNQrO13vfW"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "#Step 6: Display the Learned Q-Table"
+      ],
+      "metadata": {
+        "id": "EeF1no6x33xT"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "print(\"Learned Q-Table\\n\")\n",
+        "\n",
+        "df = pd.DataFrame(\n",
+        "    q_table,\n",
+        "    columns=[\"Left\", \"Down\", \"Right\", \"Up\"]\n",
+        ")\n",
+        "\n",
+        "df"
+      ],
+      "metadata": {
+        "id": "J_jWFgqE36de"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "#Step 7: Test the Trained Agent\n",
+        "The trained agent now uses the learned Q-table to find the best path from the start state to the goal."
+      ],
+      "metadata": {
+        "id": "__DFH5my3-px"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "state, info = env.reset()\n",
+        "\n",
+        "done = False\n",
+        "\n",
+        "total_reward = 0\n",
+        "\n",
+        "steps = 0\n",
+        "\n",
+        "while not done:\n",
+        "\n",
+        "    action = np.argmax(q_table[state])\n",
+        "\n",
+        "    new_state, reward, terminated, truncated, info = env.step(action)\n",
+        "\n",
+        "    state = new_state\n",
+        "\n",
+        "    total_reward += reward\n",
+        "\n",
+        "    steps += 1\n",
+        "\n",
+        "    done = terminated or truncated\n",
+        "\n",
+        "print(\"Final Reward :\", total_reward)\n",
+        "print(\"Total Steps :\", steps)\n",
+        "\n",
+        "if total_reward == 1:\n",
+        "    print(\"Goal Reached 🎉\")\n",
+        "else:\n",
+        "    print(\"Failed 😔\")"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "ylvFPqip3_1m",
+        "outputId": "1b747766-5e18-4ff4-9795-0b1a0bd4bac8"
+      },
+      "execution_count": 11,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Final Reward : 0\n",
+            "Total Steps : 14\n",
+            "Failed 😔\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "# Step 8: Test a Random Agent\n",
+        "\n",
+        "A random agent chooses actions randomly without learning.\n",
+        "\n",
+        "This helps compare the effectiveness of Q-Learning"
+      ],
+      "metadata": {
+        "id": "PHVyPObz4DF4"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "random_success = 0\n",
+        "\n",
+        "episodes = 100\n",
+        "\n",
+        "for episode in range(episodes):\n",
+        "\n",
+        "    state, info = env.reset()\n",
+        "\n",
+        "    done = False\n",
+        "\n",
+        "    while not done:\n",
+        "\n",
+        "        action = env.action_space.sample()\n",
+        "\n",
+        "        new_state, reward, terminated, truncated, info = env.step(action)\n",
+        "\n",
+        "        done = terminated or truncated\n",
+        "\n",
+        "        if reward == 1:\n",
+        "            random_success += 1\n",
+        "\n",
+        "print(\"Random Agent Success Rate:\", random_success, \"/\", episodes)"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "W_x1ZCq54HlC",
+        "outputId": "498dad19-29b1-4019-b7a0-46e49cbabff7"
+      },
+      "execution_count": 8,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Random Agent Success Rate: 3 / 100\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "#Step 9: Test the Trained Agent Over Multiple Episodes"
+      ],
+      "metadata": {
+        "id": "zxdENB_U4Qik"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "trained_success = 0\n",
+        "\n",
+        "episodes = 100\n",
+        "\n",
+        "for episode in range(episodes):\n",
+        "\n",
+        "    state, info = env.reset()\n",
+        "\n",
+        "    done = False\n",
+        "\n",
+        "    while not done:\n",
+        "\n",
+        "        action = np.argmax(q_table[state])\n",
+        "\n",
+        "        new_state, reward, terminated, truncated, info = env.step(action)\n",
+        "\n",
+        "        state = new_state\n",
+        "\n",
+        "        done = terminated or truncated\n",
+        "\n",
+        "        if reward == 1:\n",
+        "            trained_success += 1\n",
+        "\n",
+        "print(\"Trained Agent Success Rate:\", trained_success, \"/\", episodes)"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "4UHvuDCC4MeG",
+        "outputId": "6cea9c38-0e78-4c8b-d127-344b0d305ba1"
+      },
+      "execution_count": 10,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Trained Agent Success Rate: 0 / 100\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "#Step 10: Visualize Training Rewards\n",
+        "The graph below shows how the average reward improves as the agent learns."
+      ],
+      "metadata": {
+        "id": "KBwxFzt24VHV"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "window = 100\n",
+        "\n",
+        "moving_avg = np.convolve(\n",
+        "    rewards,\n",
+        "    np.ones(window)/window,\n",
+        "    mode='valid'\n",
+        ")\n",
+        "\n",
+        "plt.figure(figsize=(12,6))\n",
+        "\n",
+        "plt.plot(moving_avg, linewidth=2)\n",
+        "\n",
+        "plt.title(\"Average Training Reward\")\n",
+        "\n",
+        "plt.xlabel(\"Episodes\")\n",
+        "\n",
+        "plt.ylabel(\"Average Reward\")\n",
+        "\n",
+        "plt.grid(True)\n",
+        "\n",
+        "plt.show()"
+      ],
+      "metadata": {
+        "id": "0IJw8LQ84UPK"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "#Step 11: Compare Random Agent and Trained Agent"
+      ],
+      "metadata": {
+        "id": "bGYsk_qb4eRA"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "agents = [\"Random Agent\", \"Q-Learning Agent\"]\n",
+        "\n",
+        "scores = [random_success, trained_success]\n",
+        "\n",
+        "plt.figure(figsize=(7,5))\n",
+        "\n",
+        "plt.bar(agents, scores)\n",
+        "\n",
+        "plt.title(\"Performance Comparison\")\n",
+        "\n",
+        "plt.ylabel(\"Successful Episodes\")\n",
+        "\n",
+        "for i, value in enumerate(scores):\n",
+        "    plt.text(i, value + 1, str(value), ha='center', fontsize=12)\n",
+        "\n",
+        "plt.show()"
+      ],
+      "metadata": {
+        "id": "eskb61bg4fAg"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "#Step 12: Visualize the Learned Policy\n",
+        "The arrows below represent the best action learned by the agent for each state.\n",
+        "\n",
+        "← Left\n",
+        "\n",
+        "↓ Down\n",
+        "\n",
+        "→ Right\n",
+        "\n",
+        "↑ Up"
+      ],
+      "metadata": {
+        "id": "qCEOxeTy4ivE"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "actions = {\n",
+        "    0: \"←\",\n",
+        "    1: \"↓\",\n",
+        "    2: \"→\",\n",
+        "    3: \"↑\"\n",
+        "}\n",
+        "\n",
+        "policy = []\n",
+        "\n",
+        "for state in range(env.observation_space.n):\n",
+        "\n",
+        "    best_action = np.argmax(q_table[state])\n",
+        "\n",
+        "    policy.append(actions[best_action])\n",
+        "\n",
+        "policy = np.array(policy).reshape(4,4)\n",
+        "\n",
+        "print(\"Learned Policy\\n\")\n",
+        "\n",
+        "print(policy)"
+      ],
+      "metadata": {
+        "id": "_QZjk0fm4ltR"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "\n",
+        "#Step 13: Display Final Results"
+      ],
+      "metadata": {
+        "id": "SIy800Nz4oSC"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "print(\"=\"*50)\n",
+        "\n",
+        "print(\"FINAL RESULTS\")\n",
+        "\n",
+        "print(\"=\"*50)\n",
+        "\n",
+        "print(\"Random Agent Success :\", random_success)\n",
+        "\n",
+        "print(\"Trained Agent Success :\", trained_success)\n",
+        "\n",
+        "print(\"Improvement :\", trained_success-random_success)\n",
+        "\n",
+        "print(\"=\"*50)"
+      ],
+      "metadata": {
+        "id": "cucnvB9j4o7z"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "#Step 14: Success Rate Calculation"
+      ],
+      "metadata": {
+        "id": "jjhXGCNA470H"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "random_rate = (random_success / 100) * 100\n",
+        "\n",
+        "trained_rate = (trained_success / 100) * 100\n",
+        "\n",
+        "print(f\"Random Agent Success Rate : {random_rate:.2f}%\")\n",
+        "\n",
+        "print(f\"Q-Learning Agent Success Rate : {trained_rate:.2f}%\")"
+      ],
+      "metadata": {
+        "id": "0TuG2lI149H9"
+      },
+      "execution_count": null,
+      "outputs": []
+    }
+  ]
+}
