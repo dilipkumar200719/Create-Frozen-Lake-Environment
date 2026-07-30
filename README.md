@@ -88,7 +88,7 @@ Future Improvements
 
  Author
 
-**Ch. Sree Lakshmi**
+**D.Dilip Kumar**
 
 B.Tech – Computer Science and Machine Learning
 
